@@ -1,34 +1,51 @@
-"use client";
+"use client"; // For client-side hooks
 
 import { useEffect, useState } from 'react';
-import {Chessboard} from 'react-chessboard';
+import { Chessboard } from 'react-chessboard'; 
 import { Chess } from 'chess.js';
-import { io } from 'socket.io-client';
-
-const socket = io('http://localhost:3000'); // Adjust if needed
 
 const Game = () => {
-  const [game, setGame] = useState(new Chess());
+  const [game, setGame] = useState(new Chess()); // Initialize game state
 
-  useEffect(() => {
-    socket.on('move', (move) => {
-      game.move(move);
-      setGame(new Chess(game.fen()));
-    });
-
-    return () => {
-      socket.off('move');
-    };
-  }, [game]);
-
+  // Function to handle move making
   const makeMove = (move) => {
-    if (game.move(move)) {
-      setGame(new Chess(game.fen())); // Update game state
-      socket.emit('move', move); // Send move to the server
+    const result = game.move(move); // Try to make the move
+
+    if (result) {
+      // If move is valid, update the game state
+      setGame(new Chess(game.fen()));
+    } else {
+      console.log("Invalid move", move); // Handle invalid moves
+    }
+
+    // Check for game over (checkmate, stalemate, draw)
+    if (game.isGameOver()) {
+      console.log("Game over:", game.isCheckmate() ? "Checkmate!" : "Stalemate/Draw");
     }
   };
 
-  return <Chessboard position={game.fen()} onPieceDrop={makeMove} />;
+  // Function to handle piece drop
+  const onDrop = (sourceSquare, targetSquare) => {
+    const move = {
+      from: sourceSquare,
+      to: targetSquare,
+      promotion: 'q', // Auto-promote to queen on the 8th rank
+    };
+
+    makeMove(move); // Try to make the move
+  };
+
+  return (
+    <div>
+      <Chessboard 
+        position={game.fen()} // Update position based on current game FEN
+        onPieceDrop={onDrop} // Handle dropping of pieces
+      />
+      {game.isGameOver() && <p>Game Over!</p>} {/* Display if game is over */}
+    </div>
+  );
 };
 
 export default Game;
+
+
